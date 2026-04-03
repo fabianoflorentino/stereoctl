@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -32,6 +33,23 @@ func Convert(opts ConvertOptions, durationStr string) error {
 	totalSec, _ := strconv.ParseFloat(durationStr, 64)
 	totalUs := int64(totalSec * 1_000_000)
 
+	args := BuildFFmpegArgs(opts)
+
+	stdout, waitFn, err := ffmpegCmdRunner(args)
+	if err != nil {
+		return fmt.Errorf("start ffmpeg: %w", err)
+	}
+
+	// use MonitorProgress to allow testing the progress parsing/formatting
+	// write progress to stderr so it doesn't interfere with stdout capture
+	MonitorProgress(stdout, totalUs, io.Discard)
+
+	return waitFn()
+}
+
+// BuildFFmpegArgs builds the ffmpeg CLI arguments for the given ConvertOptions.
+// This is separated out for easier unit testing.
+func BuildFFmpegArgs(opts ConvertOptions) []string {
 	args := []string{"-i", opts.Input}
 
 	// video handling
@@ -57,25 +75,30 @@ func Convert(opts ConvertOptions, durationStr string) error {
 	}
 
 	args = append(args, "-progress", "pipe:1", "-nostats", "-loglevel", "error", "-y", opts.Output)
+	return args
+}
 
-	cmd := exec.Command("ffmpeg", args...)
+// ffmpegCmdRunner is a package-level variable pointing to the function that
+// runs ffmpeg. It is set to a real runner by default but can be overridden
+// in tests to avoid executing the external binary.
+var ffmpegCmdRunner = func(args []string) (io.ReadCloser, func() error, error) {
+	bin := os.Getenv("FFMPEG_BIN")
+	if bin == "" {
+		bin = "ffmpeg"
+	}
+	cmd := exec.Command(bin, args...)
 	stdout, err := cmd.StdoutPipe()
-
 	if err != nil {
-		return fmt.Errorf("stdout pipe: %w", err)
+		return nil, nil, err
 	}
 
 	cmd.Stderr = io.Discard
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start ffmpeg: %w", err)
+		return nil, nil, err
 	}
 
-	// use MonitorProgress to allow testing the progress parsing/formatting
-	// write progress to stderr so it doesn't interfere with stdout capture
-	MonitorProgress(stdout, totalUs, io.Discard)
-
-	return cmd.Wait()
+	return stdout, cmd.Wait, nil
 }
 
 // printProgress displays a progress bar in the terminal based on the current

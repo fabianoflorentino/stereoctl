@@ -3,6 +3,7 @@ package ffmpeg
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -20,20 +21,25 @@ type ProbeOutput struct {
 
 // Probe runs ffprobe on the given input file and returns the parsed output.
 func Probe(input string) (*ProbeOutput, error) {
-	cmd := exec.Command("ffprobe",
-		"-v", "quiet",
-		"-print_format", "json",
-		"-show_streams",
-		"-show_format",
-		input,
-	)
+	args := []string{"-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", input}
 
-	out, err := cmd.Output()
+	out, err := probeCmdRunner(args)
 	if err != nil {
 		return nil, fmt.Errorf("ffprobe: %w", err)
 	}
 
 	return ParseProbeOutput(out)
+}
+
+// probeCmdRunner allows tests to inject fake ffprobe output. By default it
+// executes the `ffprobe` binary (or the path set in FFPROBE_BIN).
+var probeCmdRunner = func(args []string) ([]byte, error) {
+	bin := os.Getenv("FFPROBE_BIN")
+	if bin == "" {
+		bin = "ffprobe"
+	}
+	cmd := exec.Command(bin, args...)
+	return cmd.Output()
 }
 
 // ParseProbeOutput parses ffprobe JSON output into a ProbeOutput struct.
