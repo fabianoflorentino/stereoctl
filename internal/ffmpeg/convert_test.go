@@ -20,8 +20,13 @@ func TestMonitorProgress(t *testing.T) {
 		t.Fatal("expected progress output, got empty string")
 	}
 
-	// expect at least a 100% or 0/100% markers somewhere
-	if !bytes.Contains([]byte(got), []byte("100.0%")) && !bytes.Contains([]byte(got), []byte("50.0%")) {
-		t.Fatalf("unexpected progress output: %q", got)
+	// The last progress line is out_time_us=4000000 which equals totalUs,
+	// so the final output must contain 100.0%.
+	if !bytes.Contains([]byte(got), []byte("100.0%")) {
+		t.Fatalf("expected 100.0%% in final progress output, got: %q", got)
+	}
+	// Intermediate line at 2000000us (50%) must also appear.
+	if !bytes.Contains([]byte(got), []byte("50.0%")) {
+		t.Fatalf("expected 50.0%% in progress output, got: %q", got)
 	}
 }

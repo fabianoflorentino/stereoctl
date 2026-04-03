@@ -35,16 +35,22 @@ func TestFixBatch(t *testing.T) {
 	_ = os.Setenv("FFMPEG_BIN", ffmpegScript)
 	defer func() { _ = os.Unsetenv("FFMPEG_BIN") }()
 
-	// capture stderr
+	// capture stderr with defer to ensure restoration even on early failure
 	old := os.Stderr
 	r, w, _ := os.Pipe()
 	os.Stderr = w
+	defer func() {
+		_ = w.Close()
+		os.Stderr = old
+	}()
 
-	// run batch
+	// run batch with defer to ensure cleanup even on early failure
 	flagBatch = true
+	defer func() { flagBatch = false }()
+
 	err := fixCmd.RunE(nil, []string{tmp})
 
-	// restore
+	// read output before deferred close runs
 	_ = w.Close()
 	os.Stderr = old
 	out, _ := io.ReadAll(r)
@@ -57,6 +63,4 @@ func TestFixBatch(t *testing.T) {
 	if !strings.Contains(s, "Processing") || !strings.Contains(s, "Done:") {
 		t.Fatalf("unexpected batch output: %s", s)
 	}
-
-	flagBatch = false
 }

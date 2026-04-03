@@ -23,19 +23,21 @@ func TestFixPreview(t *testing.T) {
 	_ = os.Setenv("FFPROBE_BIN", script)
 	defer func() { _ = os.Setenv("FFPROBE_BIN", orig) }()
 
-	// ensure lefthook or other tools don't interfere by running real ffmpeg
-	// set preview flag
+	// set preview flag with defer to ensure cleanup even on early failure
 	flagPreview = true
+	defer func() { flagPreview = false }()
 
-	// capture stderr
+	// capture stderr with defer to ensure restoration even on early failure
 	old := os.Stderr
 	r, w, _ := os.Pipe()
 	os.Stderr = w
+	defer func() {
+		_ = w.Close()
+		os.Stderr = old
+	}()
 
 	// run fixCmd with a dummy filename
 	err := fixCmd.RunE(nil, []string{"input.mkv"})
-
-	// restore stderr
 	_ = w.Close()
 	os.Stderr = old
 
@@ -54,7 +56,4 @@ func TestFixPreview(t *testing.T) {
 	if !strings.Contains(s, "-c:a aac") {
 		t.Fatalf("expected ffmpeg args to include -c:a aac, got: %s", s)
 	}
-
-	// reset preview flag
-	flagPreview = false
 }
