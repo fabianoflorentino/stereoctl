@@ -24,18 +24,18 @@ var checkCmd = &cobra.Command{
 		ev := profiles.EvaluateResolveFree(p)
 
 		if ev.OK {
-			fmt.Fprintf(os.Stdout, "OK: file seems compatible with Resolve free\n")
+			_, _ = fmt.Fprintln(os.Stdout, "OK: file seems compatible with Resolve free")
 		} else {
-			fmt.Fprintf(os.Stdout, "Issues found:\n")
+			_, _ = fmt.Fprintln(os.Stdout, "Issues found:")
 			for _, it := range ev.Issues {
-				fmt.Fprintf(os.Stdout, " - %s\n", it)
+				_, _ = fmt.Fprintf(os.Stdout, " - %s\n", it)
 			}
 		}
 
 		if len(ev.Actions) > 0 {
-			fmt.Fprintf(os.Stdout, "Recommended actions:\n")
+			_, _ = fmt.Fprintln(os.Stdout, "Recommended actions:")
 			for _, a := range ev.Actions {
-				fmt.Fprintf(os.Stdout, " - %s\n", a)
+				_, _ = fmt.Fprintf(os.Stdout, " - %s\n", a)
 			}
 		}
 

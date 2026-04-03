@@ -24,16 +24,16 @@ func TestFixBatch(t *testing.T) {
 	if err := os.WriteFile(ffprobeScript, []byte(ffprobeContent), 0700); err != nil {
 		t.Fatalf("write ffprobe script: %v", err)
 	}
-	os.Setenv("FFPROBE_BIN", ffprobeScript)
-	defer os.Unsetenv("FFPROBE_BIN")
+	_ = os.Setenv("FFPROBE_BIN", ffprobeScript)
+	defer func() { _ = os.Unsetenv("FFPROBE_BIN") }()
 
 	ffmpegScript := filepath.Join(tmp, "fake-ffmpeg.sh")
 	ffmpegContent := "#!/bin/sh\n# emit a single progress line and exit\necho out_time_us=0\nexit 0\n"
 	if err := os.WriteFile(ffmpegScript, []byte(ffmpegContent), 0700); err != nil {
 		t.Fatalf("write ffmpeg script: %v", err)
 	}
-	os.Setenv("FFMPEG_BIN", ffmpegScript)
-	defer os.Unsetenv("FFMPEG_BIN")
+	_ = os.Setenv("FFMPEG_BIN", ffmpegScript)
+	defer func() { _ = os.Unsetenv("FFMPEG_BIN") }()
 
 	// capture stderr
 	old := os.Stderr
@@ -45,7 +45,7 @@ func TestFixBatch(t *testing.T) {
 	err := fixCmd.RunE(nil, []string{tmp})
 
 	// restore
-	w.Close()
+	_ = w.Close()
 	os.Stderr = old
 	out, _ := io.ReadAll(r)
 	s := string(out)

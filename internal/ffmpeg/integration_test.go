@@ -42,7 +42,7 @@ func TestConvertIntegration(t *testing.T) {
 	}
 
 	out := filepath.Join(os.TempDir(), "stereoctl_test_output.mp4")
-	defer os.Remove(out)
+	defer func() { _ = os.Remove(out) }()
 
 	opts := ConvertOptions{
 		Input:      in,

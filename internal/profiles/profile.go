@@ -17,6 +17,12 @@ type Evaluation struct {
 func EvaluateResolveFree(p *ffmpeg.ProbeOutput) Evaluation {
 	ev := Evaluation{OK: true}
 
+	if p == nil {
+		ev.Issues = append(ev.Issues, "missing probe information")
+		ev.OK = false
+		return ev
+	}
+
 	// Video: prefer h264
 	var hasVideo bool
 	for _, s := range p.Streams {
@@ -62,9 +68,6 @@ func EvaluateResolveFree(p *ffmpeg.ProbeOutput) Evaluation {
 	}
 
 	// Container: recommend MP4
-	if p != nil {
-		// no direct format name in struct beyond duration in current probe struct
-	}
 
 	if ev.OK {
 		ev.Actions = append(ev.Actions, "file looks compatible with Resolve free; consider remuxing to MP4 if not already")

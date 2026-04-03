@@ -20,8 +20,8 @@ func TestFixPreview(t *testing.T) {
 
 	// set FFPROBE_BIN to our script
 	orig := os.Getenv("FFPROBE_BIN")
-	os.Setenv("FFPROBE_BIN", script)
-	defer os.Setenv("FFPROBE_BIN", orig)
+	_ = os.Setenv("FFPROBE_BIN", script)
+	defer func() { _ = os.Setenv("FFPROBE_BIN", orig) }()
 
 	// ensure lefthook or other tools don't interfere by running real ffmpeg
 	// set preview flag
@@ -36,7 +36,7 @@ func TestFixPreview(t *testing.T) {
 	err := fixCmd.RunE(nil, []string{"input.mkv"})
 
 	// restore stderr
-	w.Close()
+	_ = w.Close()
 	os.Stderr = old
 
 	out, _ := io.ReadAll(r)

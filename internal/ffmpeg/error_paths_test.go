@@ -11,7 +11,7 @@ import (
 func TestFFmpegCmdRunner_BinaryMissing(t *testing.T) {
 	orig := os.Getenv("FFMPEG_BIN")
 	_ = os.Setenv("FFMPEG_BIN", "nonexistent-ffmpeg-binary-xyz")
-	defer os.Setenv("FFMPEG_BIN", orig)
+	defer func() { _ = os.Setenv("FFMPEG_BIN", orig) }()
 
 	_, _, err := ffmpegCmdRunner([]string{"-version"})
 	if err == nil {
@@ -22,7 +22,7 @@ func TestFFmpegCmdRunner_BinaryMissing(t *testing.T) {
 func TestProbeCmdRunner_BinaryMissing(t *testing.T) {
 	orig := os.Getenv("FFPROBE_BIN")
 	_ = os.Setenv("FFPROBE_BIN", "nonexistent-ffprobe-binary-xyz")
-	defer os.Setenv("FFPROBE_BIN", orig)
+	defer func() { _ = os.Setenv("FFPROBE_BIN", orig) }()
 
 	_, err := probeCmdRunner([]string{"-version"})
 	if err == nil {

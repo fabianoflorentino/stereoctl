@@ -118,7 +118,7 @@ func MonitorProgress(r io.Reader, totalUs int64, out io.Writer) {
 				// accumulate a single-line buffer and write to out
 				buf.Reset()
 				writeProgress(&buf, currentUs, totalUs)
-				out.Write(buf.Bytes())
+				_, _ = out.Write(buf.Bytes())
 			}
 		}
 	}
@@ -142,7 +142,7 @@ func writeProgress(out io.Writer, current, total int64) {
 	elapsed := time.Duration(current) * time.Microsecond
 	totalDur := time.Duration(total) * time.Microsecond
 
-	fmt.Fprintf(out, "\r[%s] %5.1f%%  %s / %s   ", bar, pct*100, formatDur(elapsed), formatDur(totalDur))
+	_, _ = fmt.Fprintf(out, "\r[%s] %5.1f%%  %s / %s   ", bar, pct*100, formatDur(elapsed), formatDur(totalDur))
 }
 
 // formatDur converts a time.Duration to a string in HH:MM:SS format.
