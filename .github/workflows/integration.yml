@@ -1,0 +1,49 @@
+name: Integration Tests (ffmpeg)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    name: Integration tests with ffmpeg
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.26.1'
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            /home/runner/go/pkg/mod
+          key: ${{ runner.OS }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.OS }}-go-
+
+      - name: Install lint tools
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
+
+      - name: Run tests (unit + integration)
+        run: |
+          go test -v -race ./... -coverprofile=coverage.out
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
