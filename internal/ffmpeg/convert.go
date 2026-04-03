@@ -145,6 +145,38 @@ func writeProgress(out io.Writer, current, total int64) {
 	_, _ = fmt.Fprintf(out, "\r[%s] %5.1f%%  %s / %s   ", bar, pct*100, formatDur(elapsed), formatDur(totalDur))
 }
 
+// ConvertWithProgress runs ffmpeg and calls onProgress with percentage values
+// (0.0–1.0) as conversion proceeds. onProgress may be called from a goroutine
+// started by the caller; it must be goroutine-safe.
+func ConvertWithProgress(opts ConvertOptions, durationStr string, onProgress func(pct float64)) error {
+	totalSec, _ := strconv.ParseFloat(durationStr, 64)
+	totalUs := int64(totalSec * 1_000_000)
+
+	args := BuildFFmpegArgs(opts)
+	stdout, waitFn, err := ffmpegCmdRunner(args)
+	if err != nil {
+		return fmt.Errorf("start ffmpeg: %w", err)
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "out_time_us=") {
+			val := strings.TrimPrefix(line, "out_time_us=")
+			currentUs, parseErr := strconv.ParseInt(val, 10, 64)
+			if parseErr == nil && currentUs >= 0 && totalUs > 0 {
+				pct := float64(currentUs) / float64(totalUs)
+				if pct > 1.0 {
+					pct = 1.0
+				}
+				onProgress(pct)
+			}
+		}
+	}
+
+	return waitFn()
+}
+
 // formatDur converts a time.Duration to a string in HH:MM:SS format.
 func formatDur(d time.Duration) string {
 	h := int(d.Hours())
