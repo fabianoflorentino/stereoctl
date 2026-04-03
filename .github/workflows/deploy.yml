@@ -38,9 +38,61 @@ permissions:
   contents: write
 
 jobs:
+  # ── Create and push Git tag ──────────────────────────────────────────────────
+  tag:
+    name: Tag
+    environment: GITHUB
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(grep 'var version' cmd/root.go | sed 's/.*"\(.*\)"/\1/')
+          fi
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        id: tag_check
+        run: |
+          if git ls-remote --tags origin "refs/tags/${{ steps.version.outputs.tag }}" | grep -q .; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and push tag
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    outputs:
+      tag_name: ${{ steps.version.outputs.tag }}
+      tag_created: ${{ steps.tag_check.outputs.exists == 'false' }}
+
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.runner }}
+    needs: [tag]
+    if: always() && (needs.tag.result == 'success' || needs.tag.result == 'skipped')
     strategy:
       matrix:
         include:
@@ -80,7 +132,8 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
-        run: go build -ldflags="-s -w -X github.com/fabianoflorentino/stereoctl/cmd.version=$(grep 'var version' cmd/root.go | sed 's/.*\"\(.*\)\"/\1/')" -o ${{ matrix.artifact }} .
+          VERSION: ${{ needs.tag.outputs.tag_name }}
+        run: go build -ldflags="-s -w -X github.com/fabianoflorentino/stereoctl/cmd.version=${VERSION#v}" -o ${{ matrix.artifact }} .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -88,62 +141,11 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
 
-  # ── Create and push Git tag ──────────────────────────────────────────────────
-  tag:
-    name: Tag
-    environment: GITHUB
-    needs: [build]
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Extract version from source
-        id: version
-        run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION=$(grep 'var version' cmd/root.go | sed 's/.*"\(.*\)"/\1/')
-          fi
-          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Check if tag already exists
-        id: tag_check
-        run: |
-          if git ls-remote --tags origin "refs/tags/${{ steps.version.outputs.tag }}" | grep -q .; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create and push tag
-        if: steps.tag_check.outputs.exists == 'false'
-        run: |
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    outputs:
-      tag_name: ${{ steps.version.outputs.tag }}
-      tag_created: ${{ steps.tag_check.outputs.exists == 'false' }}
-
   # ── Create GitHub Release ────────────────────────────────────────────────────
   release:
     name: Release
     environment: GITHUB
-    needs: [build, tag]
+    needs: [tag, build]
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && needs.tag.outputs.tag_created == 'true' }}
 
