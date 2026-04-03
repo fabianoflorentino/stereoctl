@@ -37,3 +37,26 @@ func TestParseProbeOutput(t *testing.T) {
 		t.Fatalf("unexpected duration: %s", p.Format.Duration)
 	}
 }
+
+func TestParseProbeOutput_Error(t *testing.T) {
+	_, err := ParseProbeOutput([]byte("not json"))
+	if err == nil {
+		t.Fatalf("expected parse error for invalid json")
+	}
+}
+
+func TestProbe_WithFakeRunner(t *testing.T) {
+	orig := probeCmdRunner
+	probeCmdRunner = func(args []string) ([]byte, error) {
+		return []byte(`{"streams":[{"codec_type":"video","codec_name":"h264"}],"format":{"duration":"1"}}`), nil
+	}
+	defer func() { probeCmdRunner = orig }()
+
+	p, err := Probe("anyfile")
+	if err != nil {
+		t.Fatalf("Probe failed with fake runner: %v", err)
+	}
+	if len(p.Streams) == 0 {
+		t.Fatalf("expected streams from fake probe output")
+	}
+}
