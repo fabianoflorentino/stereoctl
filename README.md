@@ -57,7 +57,7 @@ Important flags
 
 - `--output, -o`: specify output path (defaults to same name with `.mp4`)
 - `--bitrate, -b`: audio bitrate for conversion (`convert`)
-	- Default: `192k`
+  - Default: `192k`
 - `--profile, -p`: profile to apply (`fix`)
 - `--preview, -n`: print the `ffmpeg` command without executing it (`fix`)
 - `--batch, -B`: treat the argument as a directory/glob and process multiple files (`fix`)
