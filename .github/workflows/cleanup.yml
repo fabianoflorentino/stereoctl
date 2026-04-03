@@ -1,0 +1,78 @@
+name: Cleanup Old Releases & Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run (list without removing)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Cleanup GitHub releases & tags ──────────────────────────────────────────
+  cleanup-github-releases:
+    name: Cleanup GitHub releases and tags
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: List current releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Current releases ==="
+          gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq '.[] | "\(.tag_name)  published_at=\(.published_at)  latest=\(.prerelease | not)"'
+
+      - name: Run cleanup (dry-run)
+        if: ${{ inputs.dry_run == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/cleanup-releases.sh
+          DRY_RUN=1 ./scripts/cleanup-releases.sh "${{ github.repository }}"
+
+      - name: Run cleanup
+        if: ${{ inputs.dry_run == 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/cleanup-releases.sh
+          ./scripts/cleanup-releases.sh "${{ github.repository }}"
+
+  # ── Cleanup Git tags ─────────────────────────────────────────────────────────
+  cleanup-git-tags:
+    name: Cleanup Git tags
+    needs: cleanup-github-releases
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run cleanup (dry-run)
+        if: ${{ inputs.dry_run == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/cleanup-tags.sh
+          DRY_RUN=1 ./scripts/cleanup-tags.sh "${{ github.repository }}"
+
+      - name: Run cleanup
+        if: ${{ inputs.dry_run == 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/cleanup-tags.sh
+          ./scripts/cleanup-tags.sh "${{ github.repository }}"
