@@ -4,6 +4,7 @@ VERSION    := $(shell cat VERSION 2>/dev/null || git describe --tags --abbrev=0 
 LDFLAGS    := -ldflags "-s -w -X $(MODULE)/cmd.version=$(VERSION)"
 BIN_DIR    := bin
 BUILD_DIR  := dist
+DIST_OUTPUT := $(BIN_DIR)/dist
 
 GOOS   ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
@@ -17,6 +18,9 @@ help:
 	@echo ""
 	@echo "  build         Build binary for the current platform ($(GOOS)/$(GOARCH))"
 	@echo "  build-all     Cross-compile for linux/amd64, darwin/amd64, darwin/arm64, windows/amd64"
+	@echo "  dist          Package cross-built artifacts into $(DIST_OUTPUT)"
+	@echo "  release       Build and package release artifacts into $(DIST_OUTPUT)"
+	@echo "  hooks-install Install local git hooks (lefthook)"
 	@echo "  run           Run the tool (pass ARGS=\"convert file.mkv\")"
 	@echo "  test          Run tests"
 	@echo "  lint          Run go vet"
@@ -43,6 +47,30 @@ build-all: $(BUILD_DIR)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
+
+.PHONY: dist
+dist: build-all $(DIST_OUTPUT)
+	@echo "Packaging artifacts into $(DIST_OUTPUT)"
+	@for f in $(BUILD_DIR)/* ; do \
+		name=$$(basename $$f) ; \
+		case $$name in \
+			*.exe) zip -j $(DIST_OUTPUT)/$$name.zip $$f ;; \
+			*) tar -czf $(DIST_OUTPUT)/$$name.tar.gz -C $(BUILD_DIR) $$name ;; \
+		esac ; \
+	done
+	@echo "Packaged artifacts in $(DIST_OUTPUT)"
+
+.PHONY: hooks-install
+hooks-install:
+	@echo "Installing lefthook hooks via script..."
+	@bash scripts/install-lefthook.sh
+
+.PHONY: release
+release: dist
+	@echo "Release artifacts ready in $(DIST_OUTPUT)"
+
+$(DIST_OUTPUT):
+	mkdir -p $(DIST_OUTPUT)
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 .PHONY: run
