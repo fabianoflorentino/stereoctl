@@ -62,7 +62,7 @@ jobs:
             artifact: stereoctl-windows-amd64.exe
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Go
@@ -76,7 +76,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
-        run: go build -ldflags="-s -w -X github.com/fabianoflorentino/stereoctl/cmd.version=${{ github.ref_name }}" -o ${{ matrix.artifact }} .
+        run: go build -ldflags="-s -w" -o ${{ matrix.artifact }} .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -84,19 +84,133 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
 
-  release:
-    name: Create Release
-    needs: build
+  # ── Create and push Git tag ──────────────────────────────────────────────────
+  tag:
+    name: Tag
+    environment: GITHUB
+    needs: [build]
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' }}
+
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Ensure GITHUB_TOKEN env
+        run: |
+          if [ -n "${{ secrets.GIT_HUB_TOKEN }}" ]; then
+            echo "Using secrets.GIT_HUB_TOKEN as GITHUB_TOKEN"
+            echo "GITHUB_TOKEN=${{ secrets.GIT_HUB_TOKEN }}" >> $GITHUB_ENV
+          else
+            echo "Using runner-provided GITHUB_TOKEN (secrets.GITHUB_TOKEN)"
+            echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          fi
+
+      - name: Create and push tag
+        id: create_tag
+        run: |
+          TAG_NAME="v1.0.${{ github.run_number }}"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+
+    outputs:
+      tag_name: ${{ steps.create_tag.outputs.tag_name }}
+
+  # ── Create GitHub Release ────────────────────────────────────────────────────
+  release:
+    name: Release
+    environment: GITHUB
+    needs: [build, tag]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Create GitHub Release
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          tag_name: ${{ needs.tag.outputs.tag_name }}
+          name: ${{ needs.tag.outputs.tag_name }}
           generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download stereoctl-linux-amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: stereoctl-linux-amd64
+          path: dist
+
+      - name: Download stereoctl-darwin-amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: stereoctl-darwin-amd64
+          path: dist
+
+      - name: Download stereoctl-darwin-arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: stereoctl-darwin-arm64
+          path: dist
+
+      - name: Download stereoctl-windows-amd64.exe
+        uses: actions/download-artifact@v4
+        with:
+          name: stereoctl-windows-amd64.exe
+          path: dist
+
+      - name: Upload stereoctl-linux-amd64
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/stereoctl-linux-amd64
+          asset_name: stereoctl-linux-amd64
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload stereoctl-darwin-amd64
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/stereoctl-darwin-amd64
+          asset_name: stereoctl-darwin-amd64
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload stereoctl-darwin-arm64
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/stereoctl-darwin-arm64
+          asset_name: stereoctl-darwin-arm64
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload stereoctl-windows-amd64.exe
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/stereoctl-windows-amd64.exe
+          asset_name: stereoctl-windows-amd64.exe
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
