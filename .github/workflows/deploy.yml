@@ -38,8 +38,27 @@ permissions:
   contents: write
 
 jobs:
+  # ── Run CI tests before any deploy steps ───────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: |
+          go test ./... -v
+
   # ── Create and push Git tag ──────────────────────────────────────────────────
   tag:
+    needs: [test]
     name: Tag
     environment: GITHUB
     runs-on: ubuntu-latest
@@ -100,8 +119,8 @@ jobs:
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.runner }}
-    needs: [tag]
-    if: always() && (needs.tag.result == 'success' || needs.tag.result == 'skipped')
+    needs: [tag, test]
+    if: always() && (needs.tag.result == 'success' || needs.tag.result == 'skipped') && needs.test.result == 'success'
     strategy:
       matrix:
         include:
@@ -154,9 +173,9 @@ jobs:
   release:
     name: Release
     environment: GITHUB
-    needs: [tag, build]
+    needs: [tag, build, test]
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && needs.tag.outputs.tag_created == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && needs.tag.outputs.tag_created == 'true' && needs.test.result == 'success' }}
 
     steps:
       - name: Checkout repository
