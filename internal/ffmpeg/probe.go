@@ -33,10 +33,15 @@ func Probe(input string) (*ProbeOutput, error) {
 		return nil, fmt.Errorf("ffprobe: %w", err)
 	}
 
+	return ParseProbeOutput(out)
+}
+
+// ParseProbeOutput parses ffprobe JSON output into a ProbeOutput struct.
+// This is exposed to allow unit testing without executing ffprobe.
+func ParseProbeOutput(data []byte) (*ProbeOutput, error) {
 	var probe ProbeOutput
-	if err := json.Unmarshal(out, &probe); err != nil {
+	if err := json.Unmarshal(data, &probe); err != nil {
 		return nil, fmt.Errorf("parse ffprobe output: %w", err)
 	}
-
 	return &probe, nil
 }

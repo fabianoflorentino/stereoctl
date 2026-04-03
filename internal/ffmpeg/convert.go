@@ -2,6 +2,7 @@ package ffmpeg
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os/exec"
@@ -48,26 +49,37 @@ func Convert(opts ConvertOptions, durationStr string) error {
 		return fmt.Errorf("start ffmpeg: %w", err)
 	}
 
-	scanner := bufio.NewScanner(stdout)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		if after, ok := strings.CutPrefix(line, "out_time_us="); ok {
-			val := after
-			currentUs, err := strconv.ParseInt(val, 10, 64)
-			if err == nil && currentUs >= 0 {
-				printProgress(currentUs, totalUs)
-			}
-		}
-	}
+	// use MonitorProgress to allow testing the progress parsing/formatting
+	// write progress to stderr so it doesn't interfere with stdout capture
+	MonitorProgress(stdout, totalUs, io.Discard)
 
 	return cmd.Wait()
 }
 
 // printProgress displays a progress bar in the terminal based on the current
 // and total duration in microseconds.
-func printProgress(current, total int64) {
+// MonitorProgress reads ffmpeg -progress output from r and writes a simple
+// progress bar to the provided writer. This function is testable by passing
+// a custom reader and writer.
+func MonitorProgress(r io.Reader, totalUs int64, out io.Writer) {
+	scanner := bufio.NewScanner(r)
+	var buf bytes.Buffer
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "out_time_us=") {
+			val := strings.TrimPrefix(line, "out_time_us=")
+			currentUs, err := strconv.ParseInt(val, 10, 64)
+			if err == nil && currentUs >= 0 {
+				// accumulate a single-line buffer and write to out
+				buf.Reset()
+				writeProgress(&buf, currentUs, totalUs)
+				out.Write(buf.Bytes())
+			}
+		}
+	}
+}
+
+func writeProgress(out io.Writer, current, total int64) {
 	if total <= 0 {
 		return
 	}
@@ -85,7 +97,7 @@ func printProgress(current, total int64) {
 	elapsed := time.Duration(current) * time.Microsecond
 	totalDur := time.Duration(total) * time.Microsecond
 
-	fmt.Printf("\r[%s] %5.1f%%  %s / %s   ", bar, pct*100, formatDur(elapsed), formatDur(totalDur))
+	fmt.Fprintf(out, "\r[%s] %5.1f%%  %s / %s   ", bar, pct*100, formatDur(elapsed), formatDur(totalDur))
 }
 
 // formatDur converts a time.Duration to a string in HH:MM:SS format.
