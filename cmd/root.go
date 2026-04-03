@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "dev" // overridden at build time via -ldflags "-X ...cmd.version=X.Y.Z"
+var version = "dev" // overridden at build time via -ldflags -X flag
 
 var rootCmd = &cobra.Command{
 	Use:     "stereoctl",

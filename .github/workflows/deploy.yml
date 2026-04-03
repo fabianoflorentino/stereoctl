@@ -62,7 +62,7 @@ jobs:
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
           else
-            VERSION=$(grep 'var version' cmd/root.go | sed 's/.*"\(.*\)"/\1/')
+            VERSION=$(grep 'var version' cmd/root.go | sed 's/var version = "\([^"]*\)".*/\1/')
           fi
           echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
 
