@@ -1,67 +1,70 @@
 # stereoctl
 
-stereoctl é uma pequena CLI para detectar e corrigir incompatibilidades de áudio/vídeo/contêiner (por exemplo para compatibilidade com DaVinci Resolve Free).
+stereoctl is a small CLI to detect and fix audio/video/container incompatibilities (for example, to improve compatibility with DaVinci Resolve Free).
 
-Funcionalidades principais
-- `convert`: converte/remuxa áudio para AAC estéreo
-- `check`: analisa um arquivo e sugere ações por perfil
-- `fix`: aplica um perfil (ex.: `resolve-free`) e converte/remuxa quando necessário
+Key features
 
-Instalação (rápida)
+- `convert`: convert/remux audio to AAC stereo
+- `check`: analyze a file and suggest actions based on a profile
+- `fix`: apply a profile (e.g. `resolve-free`) and convert/remux when necessary
 
-- Requisitos: Go (para desenvolvimento), `ffmpeg` e `ffprobe` (para execução/integration tests).
-- Para instalar hooks locais (opcional):
+Quick installation
+
+- Requirements: Go (for development), `ffmpeg` and `ffprobe` (for runtime and integration tests).
+- To install local git hooks (optional):
 
 ```bash
 bash scripts/install-lefthook.sh
 ```
 
-Instalando dependências de sistema (Ubuntu/Debian):
+Installing system dependencies (Ubuntu/Debian):
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y ffmpeg
 ```
 
-Uso (exemplos)
+Usage examples
 
-- `convert` — converte/remuxa um arquivo:
+- `convert` — convert/remux a file:
 
 ```bash
 stereoctl convert movie.mkv
 stereoctl convert movie.mkv --output fixed.mp4 --bitrate 256k
 ```
 
-- `check` — somente checa e sugere ações:
+- `check` — analyze only and suggest actions:
 
 ```bash
 stereoctl check movie.mkv
 ```
 
-- `fix` — aplica perfil `resolve-free` (padrão):
+- `fix` — apply the `resolve-free` profile (default):
 
 ```bash
-# modo normal: converte/remuxa
+# normal mode: convert/remux
 stereoctl fix movie.mkv
 
-# modo preview: mostra o comando ffmpeg sem executar
+# preview mode: show the ffmpeg command without running it
 stereoctl fix --preview movie.mkv
 
-# modo batch: aceita diretório ou glob e processa vários arquivos
+# batch mode: accept a directory or glob and process multiple files
 stereoctl fix --batch "*.mkv"
 stereoctl fix --batch /path/to/videos
 ```
 
-Flags importantes
-- `--output, -o`: especifica path de saída (por padrão usa o mesmo nome com `.mp4`)
-- `--bitrate, -b`: taxa de bits de áudio para conversão (`convert`)
-- `--profile, -p`: perfil a aplicar (`fix`)
-- `--preview, -n`: apenas imprime o comando `ffmpeg` sem executar (`fix`)
-- `--batch, -B`: trata o argumento como diretório/glob e processa vários arquivos (`fix`)
+Important flags
 
-Testes
+- `--output, -o`: specify output path (defaults to same name with `.mp4`)
+- `--bitrate, -b`: audio bitrate for conversion (`convert`)
+	- Default: `192k`
+- `--profile, -p`: profile to apply (`fix`)
+- `--preview, -n`: print the `ffmpeg` command without executing it (`fix`)
+- `--batch, -B`: treat the argument as a directory/glob and process multiple files (`fix`)
 
-Unit + integração (requere `ffmpeg` no PATH para executar o teste de integração):
+Tests
+
+Unit and integration tests (integration requires `ffmpeg` on PATH):
 
 ```bash
 go test ./... -v
@@ -69,21 +72,36 @@ go test ./... -v
 
 CI
 
-Há um workflow `.github/workflows/integration.yml` que executa testes em `ubuntu-latest` e instala `ffmpeg` antes de rodar os testes de integração.
+There is a workflow at `.github/workflows/integration.yml` that runs tests on `ubuntu-latest` and installs `ffmpeg` before executing integration tests.
 
 Troubleshooting
-- `ffmpeg` ou `ffprobe` não encontrados: instale via gerenciador de pacotes (apt, brew, etc.) e verifique `ffmpeg -version`.
-- `lefthook` com asdf shim: se o `lefthook install` falhar por causa de um shim (`No version is set ...`), rode o script de instalação incluído que tenta `go install` ou usar Homebrew; em último caso, execute o binário instalado diretamente:
+
+- `ffmpeg` or `ffprobe` not found: install via your package manager (apt, brew, etc.) and verify with `ffmpeg -version`.
+- `lefthook` and asdf shim: if `lefthook install` fails due to an asdf shim (`No version is set ...`), run the included installer script which attempts `go install` and falls back to Homebrew; as a last resort, run the installed binary directly, for example:
 
 ```bash
-# exemplo quando Homebrew instalou o binário em /home/linuxbrew/.linuxbrew/bin
+# example when Homebrew installed the binary at /home/linuxbrew/.linuxbrew/bin
 /home/linuxbrew/.linuxbrew/bin/lefthook install
 ```
 
-Contribuindo
+Contributing
 
-- Abra issues/PRs para bugs ou melhorias. Siga o padrão de commits e execute os hooks locais antes de push.
+- Open issues/PRs for bugs or enhancements. Follow the commit message conventions and run local hooks before pushing.
 
-Próximos passos sugeridos
-- Adicionar `make` targets para `hooks-install`, `test`, `build` e para empacotar binários.
-- Documentar perfis e heurísticas de decisão (`internal/profiles`).
+Suggested next steps
+- Add `make` targets for `hooks-install`, `test`, `build`, and packaging binaries.
+- Document profiles and decision heuristics (see `internal/profiles`).
+
+Developer commands
+
+- Install local hooks:
+
+```bash
+make hooks-install
+```
+
+- Build and package release artifacts:
+
+```bash
+make release
+```
