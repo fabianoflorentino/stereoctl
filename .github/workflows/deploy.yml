@@ -3,6 +3,10 @@ name: Build, Tag, and Release
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: "Version to release (e.g. 1.2.0) — leave empty to use version from cmd/root.go"
+        required: false
+        default: ""
       dry_run:
         description: "Dry-run (skip publishing actions)"
         required: false
@@ -106,7 +110,11 @@ jobs:
       - name: Extract version from source
         id: version
         run: |
-          VERSION=$(grep 'var version' cmd/root.go | sed 's/.*"\(.*\)"/\1/')
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(grep 'var version' cmd/root.go | sed 's/.*"\(.*\)"/\1/')
+          fi
           echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Check if tag already exists
