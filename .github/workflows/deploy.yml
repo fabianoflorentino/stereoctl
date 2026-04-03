@@ -38,23 +38,10 @@ permissions:
   contents: write
 
 jobs:
-  # ── Run CI tests before any deploy steps ───────────────────────────────────
+  # ── Run CI tests (reuses integration.yml) before any deploy steps ──────────
   test:
-    name: Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - name: Run tests
-        run: |
-          go test ./... -v
+    name: Tests (unit + integration)
+    uses: ./.github/workflows/integration.yml
 
   # ── Create and push Git tag ──────────────────────────────────────────────────
   tag:
