@@ -19,10 +19,10 @@ func BuildConvertOptionsForResolveFree(p *ffmpeg.ProbeOutput, input string) ffmp
 		Bitrate: "192k",
 	}
 
-	// video: re-encode if not h264
+	// video: re-encode only if codec is not h264 or hevc (both are Resolve-compatible)
 	for _, s := range p.Streams {
 		if s.CodecType == "video" {
-			if s.CodecName != "h264" {
+			if s.CodecName != "h264" && s.CodecName != "hevc" {
 				opts.VideoCodec = "libx264"
 				opts.VideoExtraArgs = []string{"-preset", "slow", "-crf", "20"}
 			}
