@@ -38,15 +38,13 @@ $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
 
 .PHONY: build-all
-build-all: $(BUILD_DIR)
+build-all:
+	@mkdir -p $(BUILD_DIR)
 	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY)-linux-amd64 .
 	CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY)-darwin-amd64 .
 	CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY)-darwin-arm64 .
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY)-windows-amd64.exe .
 	@echo "Binaries available in $(BUILD_DIR)/"
-
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
 
 .PHONY: dist
 dist: build-all $(DIST_OUTPUT)
