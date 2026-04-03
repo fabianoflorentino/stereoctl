@@ -89,6 +89,7 @@ Contributing
 - Open issues/PRs for bugs or enhancements. Follow the commit message conventions and run local hooks before pushing.
 
 Suggested next steps
+
 - Add `make` targets for `hooks-install`, `test`, `build`, and packaging binaries.
 - Document profiles and decision heuristics (see `internal/profiles`).
 
