@@ -67,3 +67,32 @@ func TestBuildConvertOptionsForResolveFree_ReencodeAndDownmix(t *testing.T) {
 		t.Fatalf("expected Channels 2, got %d", opts.Channels)
 	}
 }
+
+func TestBuildConvertOptionsForResolveFree_HEVCAac(t *testing.T) {
+	p := &ffmpeg.ProbeOutput{
+		Streams: []struct {
+			CodecType string "json:\"codec_type\""
+			CodecName string "json:\"codec_name\""
+			Channels  int    "json:\"channels\""
+		}{
+			{CodecType: "video", CodecName: "hevc"},
+			{CodecType: "audio", CodecName: "aac", Channels: 2},
+		},
+		Format: struct {
+			Duration string "json:\"duration\""
+		}{Duration: "10"},
+	}
+
+	opts := BuildConvertOptionsForResolveFree(p, "sample.mkv")
+
+	// HEVC is Resolve-compatible; must copy video, not re-encode
+	if opts.VideoCodec != "" {
+		t.Fatalf("expected video copy for HEVC input (empty VideoCodec), got %s", opts.VideoCodec)
+	}
+	if len(opts.VideoExtraArgs) != 0 {
+		t.Fatalf("expected no VideoExtraArgs for HEVC copy, got %v", opts.VideoExtraArgs)
+	}
+	if !opts.CopyAudio {
+		t.Fatalf("expected CopyAudio true for AAC stereo")
+	}
+}
