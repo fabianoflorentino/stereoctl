@@ -1,6 +1,7 @@
 name: Integration Tests (ffmpeg)
 
 on:
+  workflow_call:
   workflow_dispatch:
     inputs:
       dry_run:
