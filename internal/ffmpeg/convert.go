@@ -18,6 +18,12 @@ type ConvertOptions struct {
 	AudioCodec string
 	Channels   int
 	Bitrate    string
+	// VideoCodec: if empty, copy video stream; otherwise re-encode using this codec (e.g. libx264)
+	VideoCodec string
+	// VideoExtraArgs: additional ffmpeg args for video encoding (e.g. -preset slow -crf 18)
+	VideoExtraArgs []string
+	// ExtraArgs: additional ffmpeg arguments to append before progress (e.g. -t 30)
+	ExtraArgs []string
 }
 
 // Convert runs ffmpeg with the specified options and displays a progress bar based on the duration.
@@ -26,12 +32,28 @@ func Convert(opts ConvertOptions, durationStr string) error {
 	totalSec, _ := strconv.ParseFloat(durationStr, 64)
 	totalUs := int64(totalSec * 1_000_000)
 
-	args := []string{"-i", opts.Input, "-c:v", "copy"}
+	args := []string{"-i", opts.Input}
 
+	// video handling
+	if opts.VideoCodec == "" {
+		args = append(args, "-c:v", "copy")
+	} else {
+		args = append(args, "-c:v", opts.VideoCodec)
+		if len(opts.VideoExtraArgs) > 0 {
+			args = append(args, opts.VideoExtraArgs...)
+		}
+	}
+
+	// audio handling
 	if opts.CopyAudio {
 		args = append(args, "-c:a", "copy")
 	} else {
 		args = append(args, "-c:a", opts.AudioCodec, "-ac", strconv.Itoa(opts.Channels), "-b:a", opts.Bitrate)
+	}
+
+	// append any extra args then progress and output
+	if len(opts.ExtraArgs) > 0 {
+		args = append(args, opts.ExtraArgs...)
 	}
 
 	args = append(args, "-progress", "pipe:1", "-nostats", "-loglevel", "error", "-y", opts.Output)
