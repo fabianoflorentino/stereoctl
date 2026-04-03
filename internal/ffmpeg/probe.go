@@ -6,6 +6,7 @@ import (
 	"os/exec"
 )
 
+// ProbeOutput represents the relevant parts of ffprobe's JSON output.
 type ProbeOutput struct {
 	Streams []struct {
 		CodecType string `json:"codec_type"`
@@ -17,6 +18,7 @@ type ProbeOutput struct {
 	} `json:"format"`
 }
 
+// Probe runs ffprobe on the given input file and returns the parsed output.
 func Probe(input string) (*ProbeOutput, error) {
 	cmd := exec.Command("ffprobe",
 		"-v", "quiet",
