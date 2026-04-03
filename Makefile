@@ -1,6 +1,6 @@
 BINARY     := stereoctl
 MODULE     := $(shell go list -m)
-VERSION    := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "dev")
+VERSION    := $(shell cat VERSION 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "dev")
 LDFLAGS    := -ldflags "-s -w -X $(MODULE)/cmd.version=$(VERSION)"
 BIN_DIR    := bin
 BUILD_DIR  := dist
